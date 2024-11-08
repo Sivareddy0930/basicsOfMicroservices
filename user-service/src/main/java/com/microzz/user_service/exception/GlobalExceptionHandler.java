@@ -14,4 +14,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ExceptionResponse> globalExceptionHandler(Exception ex){
+        String timestamp = new java.util.Date().toString();
+        ExceptionResponse response = new ExceptionResponse(timestamp,500, ex.getMessage());
+        return ResponseEntity.badRequest().body(response);
+    }
+
 }
