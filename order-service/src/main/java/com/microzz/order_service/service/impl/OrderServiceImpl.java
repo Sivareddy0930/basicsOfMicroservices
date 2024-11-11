@@ -3,6 +3,7 @@ package com.microzz.order_service.service.impl;
 import com.microzz.order_service.dto.APIResponseDto;
 import com.microzz.order_service.dto.OrderDto;
 import com.microzz.order_service.dto.UserDto;
+import com.microzz.order_service.exception.ServerUnavailableException;
 import com.microzz.order_service.exception.UserNotExistWithIdException;
 import com.microzz.order_service.model.Order;
 import com.microzz.order_service.repository.OrderRepository;
@@ -63,28 +64,54 @@ public class OrderServiceImpl implements OrderServiceInterface {
         for (Order order : ordersList) {
             listOfOrders.add(new OrderDto(order.getId(), order.getUserId(), order.getProduct(), order.getQuantity()));
         }
-
-        UserDto userDto = webClientBuilder.build()
-                .get()
-                .uri("http://user-service/api/users/getUser/" + userId)
-                .retrieve()
-                .onStatus(
-                        status -> status.is5xxServerError(),
-                        response -> {
-                            log.warn("Received 5xx error from user-service: {}", response.statusCode());
-                            return Mono.error(new WebClientResponseException(
-                            "Service Unavailable", response.statusCode().value(), "Service Unavailable", null, null, null));
-                })
-                .bodyToMono(UserDto.class)
-                .block();
+        UserDto userDto = null;
+       try {
+            userDto = webClientBuilder.build()
+                   .get()
+                   .uri("http://user-service/api/users/getUser/" + userId)
+                   .retrieve()
+                   .onStatus(
+                           status -> status.is5xxServerError(),
+                           response -> {
+                               log.warn("Received 5xx error from user-service: {}", response.statusCode());
+                               return Mono.error(new WebClientResponseException(
+                                       "Service Unavailable", response.statusCode().value(), "Service Unavailable", null, null, null));
+                           })
+                   .bodyToMono(UserDto.class)
+                   .block();
+       }
+       catch (WebClientResponseException e) {
+           throw new ServerUnavailableException(e.getMessage());
+       }
 
         return new APIResponseDto(userDto, listOfOrders);
     }
 
 
-    public void userFallback(Long userId, Throwable t) {
+//    public APIResponseDto userFallback(Long userId, Throwable t) {
+//        log.info("Fallback executed due to: " + t.getMessage());
+//
+//        // Create fallback response
+//        UserDto fallbackUser = new UserDto(userId, "Fallback mechanism for User", "user@example.com");
+//        List<OrderDto> listOfOrders = new ArrayList<>();
+//        OrderDto orderDto = new OrderDto(0L, 0L, "fallback", 0);
+//        listOfOrders.add(orderDto);
+//
+//        APIResponseDto fallbackResponse = new APIResponseDto(fallbackUser, listOfOrders);
+//
+//        // Throw exception with fallback response
+//        throw new ServerUnavailableException("user-service unavailable", fallbackResponse);
+//    }
+
+    public APIResponseDto userFallback(Long userId, Throwable t) {
         log.info("Fallback executed due to: " + t.getMessage());
 
-        throw new ServerUnavailableException("user-service unavailable" );
+        // Create fallback response without throwing an exception
+        UserDto fallbackUser = new UserDto(userId, "Fallback User", "user@example.com");
+        List<OrderDto> listOfOrders = List.of(new OrderDto(0L, 0L, "Fallback Product", 0));
+
+        return new APIResponseDto(fallbackUser, listOfOrders);
     }
+
+
 }
