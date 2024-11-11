@@ -3,6 +3,7 @@ package com.microzz.order_service.controller;
 import com.microzz.order_service.dto.APIResponseDto;
 import com.microzz.order_service.dto.OrderDto;
 import com.microzz.order_service.dto.UserDto;
+import com.microzz.order_service.exception.ServerUnavailableException;
 import com.microzz.order_service.service.OrderServiceInterface;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -44,7 +45,12 @@ public class OrderController {
             LOGGER.error("WebClient error: {}", ex.getMessage());
             return new ResponseEntity<>(new APIResponseDto(new UserDto(userId, "Service Unavailable", ""), new ArrayList<>()),
                     HttpStatus.SERVICE_UNAVAILABLE);
-        } catch (Exception ex) {
+        }
+        catch (ServerUnavailableException ex) {
+            LOGGER.error("Server error: {}", ex.getMessage());
+            return new ResponseEntity<>(new APIResponseDto(new UserDto(userId, "Service Unavailable", ""), new ArrayList<>()),
+                    HttpStatus.SERVICE_UNAVAILABLE);
+        }catch (Exception ex) {
             log.error("Unexpected error: {}", ex.getMessage());
             return new ResponseEntity<>(new APIResponseDto(new UserDto(userId, "Unexpected Error", ""), new ArrayList<>()),
                     HttpStatus.INTERNAL_SERVER_ERROR);
